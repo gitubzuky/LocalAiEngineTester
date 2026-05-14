@@ -14,5 +14,7 @@
 .cxx
 local.properties
 
+.idea/
+
 AGENTS.md
 /docs
