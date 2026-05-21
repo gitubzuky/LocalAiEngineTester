@@ -11,11 +11,11 @@ engines/llama/src/main/cpp/llama.cpp
 当前固定版本：
 
 ```text
-tag: b9204
-commit: 726704a16
+describe: b9222-16-g45c4c1c61
+commit: 45c4c1c618b74b9911e5cbe5910ad0caba085d2d
 ```
 
-注意：`b9204` 是 release tag，不是 branch，因此不要使用 `git submodule add --branch b9204`。
+注意：固定到 tag 或 commit 时通常会进入 `detached HEAD`，这是 submodule 固定版本的正常状态。
 
 ## 初始化 submodule
 
@@ -23,10 +23,8 @@ commit: 726704a16
 
 ```powershell
 git submodule add https://github.com/ggml-org/llama.cpp.git engines/llama/src/main/cpp/llama.cpp
-cd engines/llama/src/main/cpp/llama.cpp
-git fetch --tags # 如果网络不稳定且本地已有 b9204 tag，可跳过
-git checkout b9204
-cd E:\Project\LocalAIEngineTester
+git -C engines/llama/src/main/cpp/llama.cpp fetch --tags
+git -C engines/llama/src/main/cpp/llama.cpp checkout 45c4c1c618b74b9911e5cbe5910ad0caba085d2d
 git submodule update --init --recursive
 ```
 
@@ -42,14 +40,14 @@ git add .gitmodules engines/llama/src/main/cpp/llama.cpp
 
 ```powershell
 git -C engines/llama/src/main/cpp/llama.cpp describe --tags --always
-git -C engines/llama/src/main/cpp/llama.cpp rev-parse --short HEAD
+git -C engines/llama/src/main/cpp/llama.cpp rev-parse HEAD
 ```
 
 期望输出分别为：
 
 ```text
-b9204
-726704a16
+b9222-16-g45c4c1c61
+45c4c1c618b74b9911e5cbe5910ad0caba085d2d
 ```
 
 ## 验证 native 构建

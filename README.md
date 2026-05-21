@@ -17,6 +17,72 @@ LocalAIEngineTester/
 └── app/                     # Android App，依赖 core 和被打包的引擎模块
 ```
 
+## Git Submodule 初始化
+
+项目通过 Git submodule 固定 `llama.cpp` 源码版本。
+
+submodule 配置：
+
+```text
+path: engines/llama/src/main/cpp/llama.cpp
+url:  https://github.com/ggml-org/llama.cpp.git
+```
+
+首次 clone 项目后，在项目根目录执行：
+
+```powershell
+git submodule update --init --recursive
+```
+
+如果 clone 时希望一并拉取 submodule：
+
+```powershell
+git clone --recursive <repo-url>
+```
+
+如果已经普通 clone，也可以后续再执行：
+
+```powershell
+git submodule update --init --recursive
+```
+
+如果需要重新同步 `.gitmodules` 中的 URL 或路径配置：
+
+```powershell
+git submodule sync --recursive
+git submodule update --init --recursive
+```
+
+当前 `llama.cpp` 固定版本：
+
+```text
+describe: b9222-16-g45c4c1c61
+commit:   45c4c1c618b74b9911e5cbe5910ad0caba085d2d
+remote:   https://github.com/ggml-org/llama.cpp.git
+```
+
+验证当前版本：
+
+```powershell
+git -C engines/llama/src/main/cpp/llama.cpp describe --tags --always
+git -C engines/llama/src/main/cpp/llama.cpp rev-parse HEAD
+```
+
+期望输出：
+
+```text
+b9222-16-g45c4c1c61
+45c4c1c618b74b9911e5cbe5910ad0caba085d2d
+```
+
+如果需要更新固定版本，应在 submodule 目录中 checkout 到目标 tag/commit，再回到项目根目录提交 submodule 指针：
+
+```powershell
+git -C engines/llama/src/main/cpp/llama.cpp fetch --tags
+git -C engines/llama/src/main/cpp/llama.cpp checkout <tag-or-commit>
+git add .gitmodules engines/llama/src/main/cpp/llama.cpp
+```
+
 ### core 模块
 
 `core` 提供统一推理抽象：
@@ -95,8 +161,8 @@ engines/llama/src/main/cpp/llama.cpp
 - 当前固定版本：
 
 ```text
-tag: b9204
-commit: 726704a16
+describe: b9222-16-g45c4c1c61
+commit: 45c4c1c618b74b9911e5cbe5910ad0caba085d2d
 ```
 
 - Android native 构建通过 CMake 生成：
