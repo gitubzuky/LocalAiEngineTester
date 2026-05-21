@@ -89,13 +89,27 @@ private fun TranslationContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    label = { Text(text = "输入文本") }
+                    label = { Text(text = "输入文本") },
+                    supportingText = {
+                        val isAtLimit = uiState.sourceText.length >= uiState.sourceTextLimit
+                        Text(
+                            text = "${uiState.sourceText.length} / ${uiState.sourceTextLimit}",
+                            color = if (isAtLimit) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    },
+                    isError = uiState.sourceText.length >= uiState.sourceTextLimit
                 )
             }
 
             Button(
                 onClick = onTranslateClick,
-                enabled = uiState.sourceText.isNotBlank() && !uiState.isTranslating,
+                enabled = uiState.sourceText.isNotBlank() &&
+                    uiState.sourceText.length <= uiState.sourceTextLimit &&
+                    !uiState.isTranslating,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)

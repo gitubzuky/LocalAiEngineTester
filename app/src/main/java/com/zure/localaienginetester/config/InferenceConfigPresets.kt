@@ -5,8 +5,8 @@ import com.zure.localaiengine.core.inference.InferenceParameters
 
 object InferenceConfigPresets {
     val llamaRuntime: EngineRuntimeConfig = EngineRuntimeConfig(
-        contextSize = 1024,
-        batchSize = 128,
+        contextSize = 4096,
+        batchSize = 512,
         microBatchSize = 128,
         threads = 4,
         gpuLayers = 0
@@ -27,5 +27,14 @@ object InferenceConfigPresets {
         topP = 0.8f,
         topK = 20,
         repetitionPenalty = 1.05f
+    )
+
+    val translation: InferenceParameters = textGeneration.copy(
+        maxTokens = 1024,
+        temperature = 0.2f,
+        topP = 0.9f,
+        topK = 20,
+        repetitionPenalty = 1.0f,
+        useChatTemplate = true
     )
 }

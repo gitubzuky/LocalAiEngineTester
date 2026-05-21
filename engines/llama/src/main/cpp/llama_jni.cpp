@@ -188,6 +188,50 @@ std::string token_to_piece(llama_model * model, llama_token token) {
     return std::string(piece.data(), static_cast<size_t>(size));
 }
 
+void decode_prompt(LlamaHandle * handle, std::vector<llama_token> & prompt_tokens, int max_tokens) {
+    if (prompt_tokens.empty()) {
+        throw std::runtime_error("Prompt is empty after tokenization.");
+    }
+
+    const uint32_t n_ctx = llama_n_ctx(handle->context);
+    const uint32_t n_batch = llama_n_batch(handle->context);
+    if (n_batch == 0) {
+        throw std::runtime_error("Llama context batch size is zero.");
+    }
+
+    const size_t requested_tokens = prompt_tokens.size() + static_cast<size_t>(std::max(0, max_tokens));
+    if (requested_tokens > n_ctx) {
+        throw std::runtime_error(
+            "Input exceeds llama context window. promptTokens=" + std::to_string(prompt_tokens.size()) +
+                " maxTokens=" + std::to_string(max_tokens) +
+                " contextSize=" + std::to_string(n_ctx)
+        );
+    }
+
+    const size_t chunk_size = static_cast<size_t>(n_batch);
+    const size_t chunk_count = (prompt_tokens.size() + chunk_size - 1) / chunk_size;
+    ALOGI(
+        "Decoding prompt promptTokens=%zu nBatch=%u nCtx=%u maxTokens=%d chunks=%zu",
+        prompt_tokens.size(),
+        n_batch,
+        n_ctx,
+        max_tokens,
+        chunk_count
+    );
+
+    for (size_t offset = 0; offset < prompt_tokens.size(); offset += chunk_size) {
+        const size_t remaining = prompt_tokens.size() - offset;
+        const int32_t current_size = static_cast<int32_t>(std::min(chunk_size, remaining));
+        llama_batch batch = llama_batch_get_one(prompt_tokens.data() + offset, current_size);
+        if (llama_decode(handle->context, batch) != 0) {
+            throw std::runtime_error(
+                "Failed to decode prompt chunk. offset=" + std::to_string(offset) +
+                    " chunkTokens=" + std::to_string(current_size)
+            );
+        }
+    }
+}
+
 std::string generate_text(
     LlamaHandle * handle,
     const std::string & prompt,
@@ -211,20 +255,23 @@ std::string generate_text(
     const auto generation_started_at = std::chrono::steady_clock::now();
     const std::string formatted_prompt = apply_chat_template(handle->model, prompt, use_chat_template);
     auto prompt_tokens = tokenize(handle->model, formatted_prompt, true);
-    llama_batch batch = llama_batch_get_one(prompt_tokens.data(), static_cast<int32_t>(prompt_tokens.size()));
-    if (llama_decode(handle->context, batch) != 0) {
-        throw std::runtime_error("Failed to decode prompt.");
-    }
+    decode_prompt(handle, prompt_tokens, max_tokens);
     const auto prompt_decoded_at = std::chrono::steady_clock::now();
 
     auto sampler_params = llama_sampler_chain_default_params();
-    llama_sampler * sampler = llama_sampler_chain_init(sampler_params);
-    llama_sampler_chain_add(sampler, llama_sampler_init_top_k(top_k));
-    llama_sampler_chain_add(sampler, llama_sampler_init_top_p(top_p, 1));
-    llama_sampler_chain_add(sampler, llama_sampler_init_penalties(-1, repetition_penalty, 0.0f, 0.0f));
-    llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
+    std::unique_ptr<llama_sampler, decltype(&llama_sampler_free)> sampler(
+        llama_sampler_chain_init(sampler_params),
+        llama_sampler_free
+    );
+    if (sampler == nullptr) {
+        throw std::runtime_error("Failed to initialize llama sampler.");
+    }
+    llama_sampler_chain_add(sampler.get(), llama_sampler_init_top_k(top_k));
+    llama_sampler_chain_add(sampler.get(), llama_sampler_init_top_p(top_p, 1));
+    llama_sampler_chain_add(sampler.get(), llama_sampler_init_penalties(-1, repetition_penalty, 0.0f, 0.0f));
+    llama_sampler_chain_add(sampler.get(), llama_sampler_init_temp(temperature));
     const uint32_t sampler_seed = seed < 0 ? handle->seed : static_cast<uint32_t>(seed);
-    llama_sampler_chain_add(sampler, llama_sampler_init_dist(sampler_seed));
+    llama_sampler_chain_add(sampler.get(), llama_sampler_init_dist(sampler_seed));
 
     jmethodID on_token = nullptr;
     if (env != nullptr && callback != nullptr) {
@@ -240,8 +287,8 @@ std::string generate_text(
     long long first_token_ms = -1;
 
     for (int i = 0; i < max_tokens; ++i) {
-        llama_token token = llama_sampler_sample(sampler, handle->context, -1);
-        llama_sampler_accept(sampler, token);
+        llama_token token = llama_sampler_sample(sampler.get(), handle->context, -1);
+        llama_sampler_accept(sampler.get(), token);
 
         if (llama_vocab_is_eog(vocab, token)) {
             break;
@@ -286,8 +333,10 @@ std::string generate_text(
     if (!pending_stream_bytes.empty()) {
         ALOGW("Dropping incomplete UTF-8 stream tail bytes=%zu", pending_stream_bytes.size());
     }
+    if (generated_tokens >= max_tokens) {
+        ALOGW("Generation reached maxTokens=%d; output may be truncated.", max_tokens);
+    }
 
-    llama_sampler_free(sampler);
     const auto generation_finished_at = std::chrono::steady_clock::now();
     const long long prompt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         prompt_decoded_at - generation_started_at

@@ -49,12 +49,29 @@ class TranslationViewModel @Inject constructor(
     }
 
     fun updateSourceText(text: String) {
-        _uiState.update { it.copy(sourceText = text, errorMessage = null) }
+        val limitedText = text.take(MAX_SOURCE_TEXT_CHARS)
+        val limitMessage = if (text.length > MAX_SOURCE_TEXT_CHARS) {
+            "输入文本已达到 ${MAX_SOURCE_TEXT_CHARS} 字上限。为保证整段翻译准确性，当前测试页不自动分段。"
+        } else {
+            null
+        }
+        _uiState.update {
+            it.copy(
+                sourceText = limitedText,
+                errorMessage = limitMessage
+            )
+        }
     }
 
     fun translate() {
         val state = _uiState.value
         if (state.sourceText.isBlank() || state.isTranslating) {
+            return
+        }
+        if (state.sourceText.length > state.sourceTextLimit) {
+            _uiState.update {
+                it.copy(errorMessage = "输入文本超过 ${state.sourceTextLimit} 字上限，请缩短后再翻译。")
+            }
             return
         }
 
@@ -71,7 +88,7 @@ class TranslationViewModel @Inject constructor(
                 val request = InferenceRequest(
                     task = InferenceTask.TEXT_GENERATION,
                     inputs = listOf(InferenceInput.Text(prompt)),
-                    parameters = InferenceConfigPresets.conciseTextGeneration
+                    parameters = InferenceConfigPresets.translation
                 )
 
                 var accumulatedLength = 0
@@ -135,6 +152,7 @@ class TranslationViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "Translation"
+        private const val MAX_SOURCE_TEXT_CHARS = 1500
     }
 }
 
@@ -145,7 +163,8 @@ data class TranslationUiData(
     val sourceText: String = "",
     val outputText: String = "",
     val isTranslating: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val sourceTextLimit: Int = 1500
 )
 
 sealed class TranslationEvent : UiEvent {
