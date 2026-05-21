@@ -121,6 +121,7 @@ libllama_jni.so
 
 App 内的翻译测试页使用 `TEXT_GENERATION` + 流式输出，当前面向 Hy-MT1.5 GGUF 翻译模型做了适配：
 
+- 需自行下载翻译模型：https://huggingface.co/AngelSlim/Hy-MT1.5-1.8B-1.25bit-GGUF , 下载后将模型放到/app/assets/models/llama/目录下 
 - 生成参数参考官方示例：`temperature=0.7`、`topP=0.6`、`topK=20`、`repetitionPenalty=1.05`
 - 默认启用 chat template：`useChatTemplate=true`
 - 通过 `AppLog` 打印翻译开始、每个流式 chunk、完成输出和异常堆栈
