@@ -123,8 +123,8 @@ EngineConfig(
     modelPath = modelFile.absolutePath,
     modelFormat = model.format,
     runtime = EngineRuntimeConfig(
-        contextSize = 1024,
-        batchSize = 128,
+        contextSize = 4096,
+        batchSize = 512,
         microBatchSize = 128,
         threads = 4,
         gpuLayers = 0
@@ -171,7 +171,8 @@ app/src/main/java/com/zure/localaienginetester/config/InferenceConfigPresets.kt
 
 - `llamaRuntime`：Llama/GGUF 模型加载期默认参数
 - `textGeneration`：通用文本生成默认参数
-- `conciseTextGeneration`：短文本、翻译、摘要等需要更短输出时可复用的默认参数
+- `conciseTextGeneration`：短文本、摘要等需要更短输出时可复用的默认参数
+- `translation`：翻译测试页专用参数，提供更大的输出 token 预算，避免整段翻译被过早截断
 
 调整默认值时优先修改 `InferenceConfigPresets`。如果某个页面只需要临时覆盖少数字段，可以使用 `copy(...)`：
 
@@ -231,8 +232,11 @@ libllama_jni.so
 - token 流式输出封装为 `Flow<InferenceChunk>`
 - 基于 GGUF metadata 的 Jinja chat template 渲染，适配官方 `--jinja` 推理路径
 - 流式输出 UTF-8 边界缓冲，避免中文等多字节字符被 token piece 拆分后出现乱码
+- prompt decode 会按 `llama_n_batch()` 分批提交，避免长 prompt 超过 batch 后触发 llama.cpp native 断言崩溃
+- decode 前会检查 `promptTokens + maxTokens <= contextSize`，超出时抛出可捕获异常，而不是让进程 `SIGABRT`
 - 通过 `InferenceParameters` 字段控制 `repetitionPenalty`、`seed`、`useChatTemplate` 等生成选项，并兼容旧 `extras` 键
 - 输出 `Generation perf` 日志，包含 `promptTokens`、`generatedTokens`、`promptMs`、`firstTokenMs`、`decodeMs`、`totalMs`、`tokPerSec`
+- 如果生成达到 `maxTokens` 上限，会输出 `Generation reached maxTokens... output may be truncated` 警告，便于定位翻译不全问题
 
 Llama 运行时参数读取优先级：
 
@@ -258,10 +262,12 @@ seed
 App 内的翻译测试页使用 `TEXT_GENERATION` + 流式输出，当前面向 Hy-MT1.5 GGUF 翻译模型做了适配：
 
 - 需自行下载翻译模型：https://huggingface.co/AngelSlim/Hy-MT1.5-1.8B-1.25bit-GGUF , 下载后将模型放到/app/assets/models/llama/目录下 
-- 生成参数来自 `InferenceConfigPresets.conciseTextGeneration`，可在统一配置入口调整
+- 加载期默认运行时来自 `InferenceConfigPresets.llamaRuntime`：`contextSize=4096`、`batchSize=512`、`microBatchSize=128`
+- 生成参数来自 `InferenceConfigPresets.translation`：`maxTokens=1024`、`temperature=0.2`、`topP=0.9`、`topK=20`
+- 输入框限制为 1500 字，测试页不自动分段，以优先保证整段翻译准确性
 - 默认启用 chat template：`useChatTemplate=true`
 - 通过 `AppLog` 打印翻译开始、每个流式 chunk、完成输出和异常堆栈
-- Logcat 可筛选 `LocalAIEngine-Translation` 和 `LlamaJni`；性能调优时重点查看 `Generation perf`
+- Logcat 可筛选 `LocalAIEngine-Translation` 和 `LlamaJni`；性能调优时重点查看 `Decoding prompt`、`Generation perf` 和 `Generation reached maxTokens`
 
 调试流式输出问题时，优先看 chunk 日志判断异常来自模型原始输出、JNI 解码边界，还是 UI 追加逻辑。
 
