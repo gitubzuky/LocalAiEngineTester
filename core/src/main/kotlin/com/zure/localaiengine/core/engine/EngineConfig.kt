@@ -11,6 +11,8 @@ data class EngineConfig(
 
 data class EngineRuntimeConfig(
     val contextSize: Int? = null,
+    val batchSize: Int? = null,
+    val microBatchSize: Int? = null,
     val threads: Int? = null,
     val gpuLayers: Int? = null,
     val seed: Int? = null

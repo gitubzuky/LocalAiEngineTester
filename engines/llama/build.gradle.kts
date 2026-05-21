@@ -18,9 +18,10 @@ android {
         if (llamaCppDir.exists()) {
             externalNativeBuild {
                 cmake {
-                    cppFlags += listOf("-std=c++17", "-fexceptions", "-frtti")
+                    cppFlags += listOf("-std=c++17", "-fexceptions", "-frtti", "-O3", "-DNDEBUG")
                     arguments += listOf(
                         "-DANDROID_STL=c++_shared",
+                        "-DCMAKE_BUILD_TYPE=Release",
                         "-DGGML_NATIVE=OFF",
                         "-DGGML_OPENMP=OFF",
                         "-DGGML_VULKAN=OFF",

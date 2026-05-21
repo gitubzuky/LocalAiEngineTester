@@ -8,6 +8,8 @@ internal class LlamaNativeBridge {
     external fun loadModel(
         modelPath: String,
         contextSize: Int,
+        batchSize: Int,
+        microBatchSize: Int,
         threads: Int,
         gpuLayers: Int,
         seed: Int
@@ -21,6 +23,7 @@ internal class LlamaNativeBridge {
         topP: Float,
         topK: Int,
         repetitionPenalty: Float,
+        seed: Int,
         useChatTemplate: Boolean,
         stopSequences: Array<String>
     ): String
@@ -33,6 +36,7 @@ internal class LlamaNativeBridge {
         topP: Float,
         topK: Int,
         repetitionPenalty: Float,
+        seed: Int,
         useChatTemplate: Boolean,
         stopSequences: Array<String>,
         callback: LlamaTokenCallback

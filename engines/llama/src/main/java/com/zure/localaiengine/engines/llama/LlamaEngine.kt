@@ -49,6 +49,8 @@ internal class LlamaEngine(
         handle = nativeBridge.loadModel(
             modelPath = modelFile.absolutePath,
             contextSize = loadConfig.contextSize,
+            batchSize = loadConfig.batchSize,
+            microBatchSize = loadConfig.microBatchSize,
             threads = loadConfig.threads,
             gpuLayers = loadConfig.gpuLayers,
             seed = loadConfig.seed
@@ -72,6 +74,7 @@ internal class LlamaEngine(
                 topP = generationConfig.topP,
                 topK = generationConfig.topK,
                 repetitionPenalty = generationConfig.repetitionPenalty,
+                seed = generationConfig.seed,
                 useChatTemplate = generationConfig.useChatTemplate,
                 stopSequences = generationConfig.stopSequences
             )
@@ -100,6 +103,7 @@ internal class LlamaEngine(
                 topP = generationConfig.topP,
                 topK = generationConfig.topK,
                 repetitionPenalty = generationConfig.repetitionPenalty,
+                seed = generationConfig.seed,
                 useChatTemplate = generationConfig.useChatTemplate,
                 stopSequences = generationConfig.stopSequences,
                 callback = LlamaTokenCallback { token ->

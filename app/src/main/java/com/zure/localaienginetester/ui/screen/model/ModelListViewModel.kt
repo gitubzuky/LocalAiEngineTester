@@ -6,11 +6,11 @@ import androidx.navigation.toRoute
 import com.zure.localaiengine.core.engine.AIEngineManager
 import com.zure.localaiengine.core.engine.EngineConfig
 import com.zure.localaiengine.core.engine.EngineDescriptor
-import com.zure.localaiengine.core.engine.EngineRuntimeConfig
 import com.zure.localaienginetester.base.BaseViewModel
 import com.zure.localaienginetester.base.ErrorEvent
 import com.zure.localaienginetester.base.UiEvent
 import com.zure.localaienginetester.base.UiState
+import com.zure.localaienginetester.config.InferenceConfigPresets
 import com.zure.localaienginetester.data.model.LocalModelDiscovery
 import com.zure.localaienginetester.domain.entity.LocalModel
 import com.zure.localaienginetester.navigation.Route
@@ -58,11 +58,7 @@ class ModelListViewModel @Inject constructor(
                     EngineConfig(
                         modelPath = modelFile.absolutePath,
                         modelFormat = model.format,
-                        runtime = EngineRuntimeConfig(
-                            contextSize = 1024,
-                            threads = 4,
-                            gpuLayers = 0
-                        )
+                        runtime = InferenceConfigPresets.llamaRuntime
                     )
                 )
                 _uiState.value = UiState.Success(currentData.copy(loadingModelId = null))

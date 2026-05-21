@@ -6,13 +6,13 @@ import androidx.navigation.toRoute
 import com.zure.localaiengine.core.engine.AIEngineManager
 import com.zure.localaiengine.core.inference.InferenceInput
 import com.zure.localaiengine.core.inference.InferenceOutput
-import com.zure.localaiengine.core.inference.InferenceParameters
 import com.zure.localaiengine.core.inference.InferenceRequest
 import com.zure.localaiengine.core.inference.InferenceTask
 import com.zure.localaienginetester.base.BaseViewModel
 import com.zure.localaienginetester.base.ErrorEvent
 import com.zure.localaienginetester.base.UiEvent
 import com.zure.localaienginetester.base.UiState
+import com.zure.localaienginetester.config.InferenceConfigPresets
 import com.zure.localaienginetester.navigation.Route
 import com.zure.localaienginetester.util.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -71,16 +71,7 @@ class TranslationViewModel @Inject constructor(
                 val request = InferenceRequest(
                     task = InferenceTask.TEXT_GENERATION,
                     inputs = listOf(InferenceInput.Text(prompt)),
-                    parameters = InferenceParameters(
-                        maxTokens = 512,
-                        temperature = 0.7f,
-                        topP = 0.6f,
-                        topK = 20,
-                        extras = mapOf(
-                            "repetitionPenalty" to "1.05",
-                            "useChatTemplate" to "true"
-                        )
-                    )
+                    parameters = InferenceConfigPresets.conciseTextGeneration
                 )
 
                 var accumulatedLength = 0
@@ -130,13 +121,8 @@ class TranslationViewModel @Inject constructor(
         } else {
             "The source language is $sourceLanguage."
         }
-        return """
-            $sourceInstruction
-            Translate the following segment into $targetLanguage.
-            Output only the translated text, without explanation.
-
-            ${state.sourceText}
-        """.trimIndent()
+        return "$sourceInstruction Translate the following segment into $targetLanguage, " +
+            "without additional explanation: ${state.sourceText}"
     }
 
     private fun String.toInstructionName(): String {

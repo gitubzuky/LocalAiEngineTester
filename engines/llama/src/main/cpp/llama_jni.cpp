@@ -2,6 +2,7 @@
 #include <android/log.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -195,6 +196,7 @@ std::string generate_text(
     float top_p,
     int top_k,
     float repetition_penalty,
+    int seed,
     bool use_chat_template,
     const std::vector<std::string> & stop_sequences,
     JNIEnv * env = nullptr,
@@ -206,12 +208,14 @@ std::string generate_text(
 
     llama_memory_clear(llama_get_memory(handle->context), true);
 
+    const auto generation_started_at = std::chrono::steady_clock::now();
     const std::string formatted_prompt = apply_chat_template(handle->model, prompt, use_chat_template);
     auto prompt_tokens = tokenize(handle->model, formatted_prompt, true);
     llama_batch batch = llama_batch_get_one(prompt_tokens.data(), static_cast<int32_t>(prompt_tokens.size()));
     if (llama_decode(handle->context, batch) != 0) {
         throw std::runtime_error("Failed to decode prompt.");
     }
+    const auto prompt_decoded_at = std::chrono::steady_clock::now();
 
     auto sampler_params = llama_sampler_chain_default_params();
     llama_sampler * sampler = llama_sampler_chain_init(sampler_params);
@@ -219,7 +223,8 @@ std::string generate_text(
     llama_sampler_chain_add(sampler, llama_sampler_init_top_p(top_p, 1));
     llama_sampler_chain_add(sampler, llama_sampler_init_penalties(-1, repetition_penalty, 0.0f, 0.0f));
     llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
-    llama_sampler_chain_add(sampler, llama_sampler_init_dist(handle->seed));
+    const uint32_t sampler_seed = seed < 0 ? handle->seed : static_cast<uint32_t>(seed);
+    llama_sampler_chain_add(sampler, llama_sampler_init_dist(sampler_seed));
 
     jmethodID on_token = nullptr;
     if (env != nullptr && callback != nullptr) {
@@ -231,6 +236,8 @@ std::string generate_text(
     std::string output;
     std::string pending_stream_bytes;
     const llama_vocab * vocab = llama_model_get_vocab(handle->model);
+    int generated_tokens = 0;
+    long long first_token_ms = -1;
 
     for (int i = 0; i < max_tokens; ++i) {
         llama_token token = llama_sampler_sample(sampler, handle->context, -1);
@@ -239,6 +246,13 @@ std::string generate_text(
         if (llama_vocab_is_eog(vocab, token)) {
             break;
         }
+
+        if (generated_tokens == 0) {
+            first_token_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - generation_started_at
+            ).count();
+        }
+        ++generated_tokens;
 
         const std::string piece = token_to_piece(handle->model, token);
         output += piece;
@@ -274,6 +288,27 @@ std::string generate_text(
     }
 
     llama_sampler_free(sampler);
+    const auto generation_finished_at = std::chrono::steady_clock::now();
+    const long long prompt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        prompt_decoded_at - generation_started_at
+    ).count();
+    const long long total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        generation_finished_at - generation_started_at
+    ).count();
+    const long long decode_ms = std::max(0LL, total_ms - prompt_ms);
+    const double tokens_per_second = decode_ms > 0
+        ? (static_cast<double>(generated_tokens) * 1000.0 / static_cast<double>(decode_ms))
+        : 0.0;
+    ALOGI(
+        "Generation perf promptTokens=%zu generatedTokens=%d promptMs=%lld firstTokenMs=%lld decodeMs=%lld totalMs=%lld tokPerSec=%.2f",
+        prompt_tokens.size(),
+        generated_tokens,
+        prompt_ms,
+        first_token_ms,
+        decode_ms,
+        total_ms,
+        tokens_per_second
+    );
     return output;
 }
 
@@ -285,6 +320,8 @@ Java_com_zure_localaiengine_engines_llama_LlamaNativeBridge_loadModel(
     jobject,
     jstring model_path,
     jint context_size,
+    jint batch_size,
+    jint micro_batch_size,
     jint threads,
     jint gpu_layers,
     jint seed
@@ -297,19 +334,27 @@ Java_com_zure_localaiengine_engines_llama_LlamaNativeBridge_loadModel(
 
         llama_context_params context_params = llama_context_default_params();
         context_params.n_ctx = context_size;
+        context_params.n_batch = batch_size;
+        context_params.n_ubatch = micro_batch_size;
         context_params.n_threads = threads;
         context_params.n_threads_batch = threads;
+        // Keep Android CPU inference on the conservative attention path; the default AUTO path
+        // can enter flash-attn kernels that crash with SIGILL on some devices.
+        context_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;
         const std::string path = to_string(env, model_path);
         const long long model_size = file_size_bytes(path);
         llama_log_set(llama_log_to_android, nullptr);
         ALOGI(
-            "Loading GGUF model path=%s sizeBytes=%lld contextSize=%d threads=%d gpuLayers=%d seed=%d",
+            "Loading GGUF model path=%s sizeBytes=%lld contextSize=%d batchSize=%d microBatchSize=%d threads=%d gpuLayers=%d seed=%d flashAttn=%s",
             path.c_str(),
             model_size,
             context_size,
+            batch_size,
+            micro_batch_size,
             threads,
             gpu_layers,
-            seed
+            seed,
+            llama_flash_attn_type_name(context_params.flash_attn_type)
         );
 
         auto handle = std::make_unique<LlamaHandle>();
@@ -347,6 +392,7 @@ Java_com_zure_localaiengine_engines_llama_LlamaNativeBridge_generate(
     jfloat top_p,
     jint top_k,
     jfloat repetition_penalty,
+    jint seed,
     jboolean use_chat_template,
     jobjectArray stop_sequences
 ) {
@@ -360,6 +406,7 @@ Java_com_zure_localaiengine_engines_llama_LlamaNativeBridge_generate(
             top_p,
             top_k,
             repetition_penalty,
+            seed,
             use_chat_template,
             to_string_vector(env, stop_sequences)
         );
@@ -382,6 +429,7 @@ Java_com_zure_localaiengine_engines_llama_LlamaNativeBridge_generateStream(
     jfloat top_p,
     jint top_k,
     jfloat repetition_penalty,
+    jint seed,
     jboolean use_chat_template,
     jobjectArray stop_sequences,
     jobject callback
@@ -396,6 +444,7 @@ Java_com_zure_localaiengine_engines_llama_LlamaNativeBridge_generateStream(
             top_p,
             top_k,
             repetition_penalty,
+            seed,
             use_chat_template,
             to_string_vector(env, stop_sequences),
             env,
