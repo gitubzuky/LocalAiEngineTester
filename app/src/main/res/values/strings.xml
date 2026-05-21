@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">LocalAIEngineTester</string>
+    <string name="home_title">AI 引擎列表</string>
 </resources>
