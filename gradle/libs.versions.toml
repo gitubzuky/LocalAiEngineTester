@@ -20,6 +20,7 @@ room = "2.8.4"
 navigationCompose = "2.9.8"
 lifecycleViewmodelCompose = "2.10.0"
 ksp = "2.3.8"
+camerax = "1.6.1"
 
 # --- BqLog ---
 bqlog = "2.2.9"
@@ -67,6 +68,12 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 
 # --- Lifecycle ViewModel ---
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
+
+# --- CameraX ---
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 
 # --- BqLog ---
 bqlog-android = { group = "com.tencent.bqlog", name = "android", version.ref = "bqlog" }

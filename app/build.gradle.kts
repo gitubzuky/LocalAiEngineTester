@@ -73,6 +73,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":camera:analysis"))
     if ("tflite" in packagedAIEngines) {
         implementation(project(":engines:tflite"))
     }

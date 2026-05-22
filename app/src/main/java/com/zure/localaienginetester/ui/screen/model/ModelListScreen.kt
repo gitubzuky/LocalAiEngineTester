@@ -46,8 +46,14 @@ fun ModelListScreen(
 
     LaunchedEffect(Unit) {
         viewModel.event.collect { event ->
-            if (event is ModelListEvent.ModelReady) {
-                navController.navigate(Route.TranslationTest(event.modelName))
+            when (event) {
+                is ModelListEvent.CameraPoseReady -> {
+                    navController.navigate(Route.CameraPoseTest(event.modelName))
+                }
+                is ModelListEvent.ModelReady -> {
+                    navController.navigate(Route.TranslationTest(event.modelName))
+                }
+                is ModelListEvent.Error -> Unit
             }
         }
     }

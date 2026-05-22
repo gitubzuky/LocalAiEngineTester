@@ -6,6 +6,7 @@ import androidx.navigation.toRoute
 import com.zure.localaiengine.core.engine.AIEngineManager
 import com.zure.localaiengine.core.engine.EngineConfig
 import com.zure.localaiengine.core.engine.EngineDescriptor
+import com.zure.localaiengine.core.model.ModelFormat
 import com.zure.localaienginetester.base.BaseViewModel
 import com.zure.localaienginetester.base.ErrorEvent
 import com.zure.localaienginetester.base.UiEvent
@@ -62,7 +63,11 @@ class ModelListViewModel @Inject constructor(
                     )
                 )
                 _uiState.value = UiState.Success(currentData.copy(loadingModelId = null))
-                sendEvent(ModelListEvent.ModelReady(model.name))
+                if (model.isRtmposeBody2dModel()) {
+                    sendEvent(ModelListEvent.CameraPoseReady(model.name))
+                } else {
+                    sendEvent(ModelListEvent.ModelReady(model.name))
+                }
             } catch (throwable: Throwable) {
                 val message = throwable.message ?: "Failed to load model."
                 sendEvent(ModelListEvent.Error(message))
@@ -98,6 +103,13 @@ class ModelListViewModel @Inject constructor(
             )
         }
     }
+
+    private fun LocalModel.isRtmposeBody2dModel(): Boolean {
+        return engineId == "tflite" &&
+            format == ModelFormat.TFLITE &&
+            name.contains("rtmpose", ignoreCase = true) &&
+            name.contains("body2d", ignoreCase = true)
+    }
 }
 
 data class ModelListUiData(
@@ -111,4 +123,5 @@ data class ModelListUiData(
 sealed class ModelListEvent : UiEvent {
     data class Error(override val message: String) : ModelListEvent(), ErrorEvent
     data class ModelReady(val modelName: String) : ModelListEvent()
+    data class CameraPoseReady(val modelName: String) : ModelListEvent()
 }

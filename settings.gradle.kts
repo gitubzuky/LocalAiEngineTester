@@ -25,6 +25,7 @@ dependencyResolutionManagement {
 rootProject.name = "LocalAIEngineTester"
 include(":app")
 include(":core")
+include(":camera:analysis")
 include(":engines:tflite")
 include(":engines:onnxruntime")
 include(":engines:llama")
