@@ -46,6 +46,19 @@ class AIEngineManager(
         }
     }
 
+    suspend fun loadStandaloneEngine(engineId: String, config: EngineConfig): AIEngine {
+        return withContext(Dispatchers.IO) {
+            val engine = registry.create(engineId)
+            try {
+                engine.load(config)
+                engine
+            } catch (throwable: Throwable) {
+                engine.close()
+                throw throwable
+            }
+        }
+    }
+
     suspend fun infer(request: InferenceRequest): InferenceResult {
         return withContext(Dispatchers.IO) {
             mutex.withLock {

@@ -6,10 +6,11 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val supportedAIEngines = setOf("tflite", "llama")
+val supportedAIEngines = setOf("tflite", "llama", "onnxruntime")
 val packagedAIEngines = setOf(
     "tflite",
      "llama",
+    "onnxruntime",
 )
 
 val unknownAIEngines = packagedAIEngines - supportedAIEngines
@@ -79,6 +80,9 @@ dependencies {
     }
     if ("llama" in packagedAIEngines) {
         implementation(project(":engines:llama"))
+    }
+    if ("onnxruntime" in packagedAIEngines) {
+        implementation(project(":engines:onnxruntime"))
     }
 
     implementation(platform(libs.androidx.compose.bom))

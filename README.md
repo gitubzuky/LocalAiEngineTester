@@ -201,6 +201,23 @@ com.google.ai.edge.litert:litert
 
 图片、音频、文本等输入的预处理应在业务层或后续专用适配器中完成。
 
+### RTMPose 姿态测试
+
+姿态相机测试使用两阶段 TFLite 流程：`RTMDet person detector -> RTMPose body2d`。模型由 `LocalModelDiscovery` 统一发现，assets 内置模型和外部模型目录会走同一套复制与加载逻辑。
+
+推荐将模型放入：
+
+```text
+app/src/main/assets/models/tflite/
+```
+
+当前约定：
+
+- RTMPose 模型：文件名包含 `rtmpose` 和 `body2d`。
+- RTMDet 人体检测模型：文件名包含 `rtmdet` 和 `person`，例如 `rtmdet_tiny_person.tflite`。
+
+姿态页会优先使用 assets 内的 RTMDet person detector；如果 assets 中不存在，再使用外部 TFLite 模型目录中的同名候选。
+
 ### Llama 引擎
 
 `:engines:llama` 使用方案 A：源码编译。

@@ -8,7 +8,10 @@ import com.zure.localaiengine.camera.analysis.api.TensorDataType
 import com.zure.localaiengine.camera.analysis.api.TensorLayout
 
 object RtmposeBody2dProfile {
-    fun create(inputName: String? = null): GenericVisionInputProfile {
+    fun create(
+        inputName: String? = null,
+        cropPolicy: CropPolicy = CropPolicy.CenterCrop(width = 360, height = 480)
+    ): GenericVisionInputProfile {
         return GenericVisionInputProfile(
             id = "rtmpose_body2d",
             inputName = inputName,
@@ -16,7 +19,7 @@ object RtmposeBody2dProfile {
             tensorLayout = TensorLayout.NCHW,
             tensorDataType = TensorDataType.Float32,
             pixelOrder = PixelOrder.RGB,
-            cropPolicy = CropPolicy.CenterCrop(width = 360, height = 480),
+            cropPolicy = cropPolicy,
             resizePolicy = ResizePolicy.Bilinear(width = 192, height = 256),
             normalization = NormalizationSpec.MeanStd(
                 mean = floatArrayOf(123.675f, 116.28f, 103.53f),

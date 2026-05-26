@@ -45,6 +45,7 @@ object AIEngineModule {
 
     private val engineFactoryClassNames = mapOf(
         "tflite" to "com.zure.localaiengine.engines.tflite.TfLiteEngineFactory",
-        "llama" to "com.zure.localaiengine.engines.llama.LlamaEngineFactory"
+        "llama" to "com.zure.localaiengine.engines.llama.LlamaEngineFactory",
+        "onnxruntime" to "com.zure.localaiengine.engines.onnxruntime.OnnxRuntimeEngineFactory"
     )
 }

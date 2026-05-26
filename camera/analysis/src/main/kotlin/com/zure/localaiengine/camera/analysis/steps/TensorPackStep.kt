@@ -44,13 +44,19 @@ class TensorPackStep : FrameProcessorStep {
         context: FrameProcessContext,
         spec: NormalizationSpec
     ): InferenceInput.Tensor {
-        val values = FloatArray(bitmap.width * bitmap.height * 3)
+        val output = ByteBuffer
+            .allocateDirect(bitmap.width * bitmap.height * 3 * Float.SIZE_BYTES)
+            .order(ByteOrder.nativeOrder())
         writePixels(bitmap, context.profile.tensorLayout) { index, channel, color ->
-            values[index] = normalize(channelValue(color, channel, context.profile.pixelOrder), channel, spec)
+            output.putFloat(
+                index * Float.SIZE_BYTES,
+                normalize(channelValue(color, channel, context.profile.pixelOrder), channel, spec)
+            )
         }
+        output.rewind()
         return InferenceInput.Tensor(
             name = context.profile.inputName.orEmpty(),
-            data = values,
+            data = output,
             shape = context.profile.inputShape
         )
     }

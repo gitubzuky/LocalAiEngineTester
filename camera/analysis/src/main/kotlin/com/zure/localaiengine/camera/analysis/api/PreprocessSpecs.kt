@@ -25,6 +25,12 @@ sealed interface CropPolicy {
     data object None : CropPolicy
     data class CenterCrop(val width: Int, val height: Int) : CropPolicy
     data class CenterAspectFit(val width: Int, val height: Int) : CropPolicy
+    data class Roi(
+        val left: Float,
+        val top: Float,
+        val width: Float,
+        val height: Float
+    ) : CropPolicy
     data class Letterbox(
         val width: Int,
         val height: Int,

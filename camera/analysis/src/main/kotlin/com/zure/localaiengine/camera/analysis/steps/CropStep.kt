@@ -21,11 +21,13 @@ class CropStep(
             CropPolicy.None -> Rect(0, 0, bitmap.width, bitmap.height)
             is CropPolicy.CenterCrop -> fixedCenterCrop(bitmap.width, bitmap.height, policy.width, policy.height)
             is CropPolicy.CenterAspectFit -> centerAspectCrop(bitmap.width, bitmap.height, policy.width, policy.height)
+            is CropPolicy.Roi -> roiCrop(bitmap.width, bitmap.height, policy)
             is CropPolicy.Letterbox -> Rect(0, 0, bitmap.width, bitmap.height)
         }
 
-        val cropped = if (policy is CropPolicy.Letterbox) {
-            letterbox(bitmap, policy)
+        val letterbox = if (policy is CropPolicy.Letterbox) letterbox(bitmap, policy) else null
+        val cropped = if (letterbox != null) {
+            letterbox.bitmap
         } else {
             Bitmap.createBitmap(bitmap, sourceRect.left, sourceRect.top, sourceRect.width(), sourceRect.height())
         }
@@ -37,12 +39,16 @@ class CropStep(
             FrameTransform(
                 modelInputWidth = targetWidth,
                 modelInputHeight = targetHeight,
+                sourceWidth = bitmap.width.toFloat(),
+                sourceHeight = bitmap.height.toFloat(),
                 cropLeft = sourceRect.left.toFloat(),
                 cropTop = sourceRect.top.toFloat(),
                 cropWidth = sourceRect.width().toFloat(),
                 cropHeight = sourceRect.height().toFloat(),
-                scaleX = targetWidth / sourceRect.width().toFloat(),
-                scaleY = targetHeight / sourceRect.height().toFloat(),
+                scaleX = letterbox?.scale ?: targetWidth / sourceRect.width().toFloat(),
+                scaleY = letterbox?.scale ?: targetHeight / sourceRect.height().toFloat(),
+                padLeft = letterbox?.padLeft ?: 0f,
+                padTop = letterbox?.padTop ?: 0f,
                 isMirrored = context.config.mirrorFrontCamera
             )
         )
@@ -70,7 +76,15 @@ class CropStep(
         }
     }
 
-    private fun letterbox(bitmap: Bitmap, policy: CropPolicy.Letterbox): Bitmap {
+    private fun roiCrop(width: Int, height: Int, policy: CropPolicy.Roi): Rect {
+        val left = policy.left.coerceIn(0f, (width - 1).coerceAtLeast(0).toFloat())
+        val top = policy.top.coerceIn(0f, (height - 1).coerceAtLeast(0).toFloat())
+        val right = (policy.left + policy.width).coerceIn(left + 1f, width.toFloat())
+        val bottom = (policy.top + policy.height).coerceIn(top + 1f, height.toFloat())
+        return Rect(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+    }
+
+    private fun letterbox(bitmap: Bitmap, policy: CropPolicy.Letterbox): LetterboxResult {
         val result = Bitmap.createBitmap(policy.width, policy.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         canvas.drawColor(Color.rgb(policy.fillRed, policy.fillGreen, policy.fillBlue))
@@ -80,6 +94,13 @@ class CropStep(
         val left = (policy.width - scaledWidth) / 2
         val top = (policy.height - scaledHeight) / 2
         canvas.drawBitmap(bitmap, null, Rect(left, top, left + scaledWidth, top + scaledHeight), null)
-        return result
+        return LetterboxResult(result, scale, left.toFloat(), top.toFloat())
     }
+
+    private data class LetterboxResult(
+        val bitmap: Bitmap,
+        val scale: Float,
+        val padLeft: Float,
+        val padTop: Float
+    )
 }

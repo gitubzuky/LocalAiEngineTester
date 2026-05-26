@@ -9,6 +9,12 @@ sealed interface InferenceOutput {
 
     data class Embedding(val vector: FloatArray) : InferenceOutput
 
+    data class Audio(
+        val samples: FloatArray,
+        val sampleRate: Int,
+        val channels: Int = 1
+    ) : InferenceOutput
+
     data class Tensor(
         val name: String,
         val data: Any,

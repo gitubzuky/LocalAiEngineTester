@@ -26,24 +26,26 @@ data class PoseOverlayPoint(
 )
 
 object PoseSkeleton {
+    // RTMPose body2d uses COCO body17 ordering; keep the overlay topology aligned with MMPose.
     val cocoBody17: List<PoseBone> = listOf(
-        PoseBone(5, 7),
-        PoseBone(7, 9),
-        PoseBone(6, 8),
-        PoseBone(8, 10),
-        PoseBone(5, 6),
+        PoseBone(15, 13),
+        PoseBone(13, 11),
+        PoseBone(16, 14),
+        PoseBone(14, 12),
+        PoseBone(11, 12),
         PoseBone(5, 11),
         PoseBone(6, 12),
-        PoseBone(11, 12),
-        PoseBone(11, 13),
-        PoseBone(13, 15),
-        PoseBone(12, 14),
-        PoseBone(14, 16),
-        PoseBone(0, 1),
-        PoseBone(0, 2),
+        PoseBone(5, 6),
+        PoseBone(5, 7),
+        PoseBone(6, 8),
+        PoseBone(7, 9),
+        PoseBone(8, 10),
+        PoseBone(1, 2),
         PoseBone(1, 3),
         PoseBone(2, 4),
-        PoseBone(0, 5),
-        PoseBone(0, 6)
+        PoseBone(0, 1),
+        PoseBone(0, 2),
+        PoseBone(3, 5),
+        PoseBone(4, 6)
     )
 }

@@ -46,7 +46,8 @@ import com.zure.localaiengine.camera.analysis.api.CameraAnalysisError
 import com.zure.localaiengine.camera.analysis.api.CameraAnalysisState
 import com.zure.localaiengine.camera.analysis.api.PreprocessBackend
 import com.zure.localaiengine.camera.analysis.camerax.CameraXAnalysisController
-import com.zure.localaiengine.camera.analysis.profiles.RtmposeBody2dProfile
+import com.zure.localaiengine.camera.analysis.profiles.RtmDetPersonProfile
+import com.zure.localaiengine.camera.analysis.profiles.YoloPersonProfile
 import com.zure.localaienginetester.base.UiState
 import com.zure.localaienginetester.ui.component.AppScaffold
 import com.zure.localaienginetester.ui.theme.LocalAIEngineTesterTheme
@@ -78,13 +79,18 @@ fun PoseCameraScreen(
         if (!granted) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    LaunchedEffect(data?.hasCameraPermission, previewView) {
+    LaunchedEffect(data?.hasCameraPermission, data?.detectorPreprocessMode, previewView) {
         val view = previewView
         if (data?.hasCameraPermission == true && view != null) {
             controller.bind(
                 lifecycleOwner = lifecycleOwner,
                 previewView = view,
-                profile = RtmposeBody2dProfile.create(),
+                profile = when (data.detectorType) {
+                    PersonDetectorType.Yolo -> YoloPersonProfile.create()
+                    PersonDetectorType.RtmDet -> RtmDetPersonProfile.create(
+                        preprocessMode = data.detectorPreprocessMode
+                    )
+                },
                 config = CameraAnalysisConfig(
                     lensFacing = AnalysisLensFacing.Back,
                     maxAnalysisFps = (1000L / data.analysisIntervalMillis).toInt().coerceAtLeast(1),
@@ -128,7 +134,8 @@ fun PoseCameraScreen(
                 },
                 modifier = Modifier.fillMaxSize()
             )
-        }
+        },
+        onCycleDetectorPreprocessMode = viewModel::onCycleDetectorPreprocessMode
     )
 }
 
@@ -138,6 +145,7 @@ private fun PoseCameraContent(
     cameraState: CameraAnalysisState,
     onBackClick: () -> Unit,
     onRequestPermission: () -> Unit,
+    onCycleDetectorPreprocessMode: () -> Unit,
     cameraPreview: @Composable () -> Unit
 ) {
     val data = (uiState as? UiState.Success)?.data
@@ -151,11 +159,13 @@ private fun PoseCameraContent(
                 PoseOverlay(
                     pose = data.pose,
                     frameTransform = data.frameTransform,
+                    personDetection = data.personDetection,
                     modifier = Modifier.fillMaxSize()
                 )
                 PoseStatusBar(
                     data = data,
                     cameraState = cameraState,
+                    onCycleDetectorPreprocessMode = onCycleDetectorPreprocessMode,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -175,6 +185,7 @@ private fun PoseCameraContent(
 private fun PoseStatusBar(
     data: PoseCameraUiData,
     cameraState: CameraAnalysisState,
+    onCycleDetectorPreprocessMode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -188,7 +199,7 @@ private fun PoseStatusBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = data.modelName,
+                    text = data.detectorModelName?.let { "${data.modelName} · $it" } ?: data.modelName,
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -201,9 +212,29 @@ private fun PoseStatusBar(
                 }
             }
             Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (data.detectorType == PersonDetectorType.RtmDet) {
+                        "检测 ${data.detectorType.label} · 预处理 ${data.detectorPreprocessMode.label}"
+                    } else {
+                        "检测 ${data.detectorType.label} · 预处理 RGB/0..1"
+                    },
+                    color = Color.White.copy(alpha = 0.86f),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Button(onClick = onCycleDetectorPreprocessMode) {
+                    Text(text = "切换")
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "间隔 ${data.analysisIntervalMillis}ms · ${cameraState.label()} · " +
-                    "耗时 ${data.lastInferenceMillis ?: "-"}ms · " +
+                    "检测 ${data.lastDetectionMillis ?: "-"}ms/${data.detectedPersons}人 · " +
+                    "姿态 ${data.lastInferenceMillis ?: "-"}ms · " +
                     "点 ${data.detectedKeypoints} · 最高分 ${data.maxPoseScore.formatScore()}",
                 color = Color.White.copy(alpha = 0.86f),
                 style = MaterialTheme.typography.bodySmall
@@ -294,7 +325,8 @@ fun PoseCameraScreenPreview() {
                         .fillMaxSize()
                         .background(Color(0xFF202124))
                 )
-            }
+            },
+            onCycleDetectorPreprocessMode = {}
         )
     }
 }

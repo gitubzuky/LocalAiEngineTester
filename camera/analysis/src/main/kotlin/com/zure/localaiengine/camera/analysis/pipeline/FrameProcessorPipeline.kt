@@ -21,7 +21,8 @@ class FrameProcessorPipeline(
             tensors = tensors,
             frameInfo = frame.info,
             transform = context.requireTransform(),
-            profileId = context.profile.id
+            profileId = context.profile.id,
+            sourceFrame = frame
         )
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import com.zure.localaiengine.camera.analysis.api.FrameTransform
+import com.zure.localaiengine.core.vision.Detection
 import com.zure.localaienginetester.ui.theme.LocalAIEngineTesterTheme
 import com.zure.localaienginetester.util.AppLog
 
@@ -20,6 +21,7 @@ import com.zure.localaienginetester.util.AppLog
 fun PoseOverlay(
     pose: PoseResult?,
     frameTransform: FrameTransform?,
+    personDetection: Detection? = null,
     modifier: Modifier = Modifier,
     minScore: Float = 0.15f,
     minPointScore: Float = 0.05f
@@ -34,6 +36,7 @@ fun PoseOverlay(
             )
         }
         drawRoi(frameTransform)
+        personDetection?.let { detection -> drawDetection(detection, frameTransform) }
         logger.log(
             pose = pose,
             frameTransform = frameTransform,
@@ -103,6 +106,32 @@ private class PoseOverlayLogger {
     }
 }
 
+private fun DrawScope.drawDetection(detection: Detection, transform: FrameTransform) {
+    val topLeft = sourceToPreviewOffset(
+        sourceX = detection.boundingBox.left,
+        sourceY = detection.boundingBox.top,
+        transform = transform,
+        canvasWidth = size.width,
+        canvasHeight = size.height
+    )
+    val bottomRight = sourceToPreviewOffset(
+        sourceX = detection.boundingBox.right,
+        sourceY = detection.boundingBox.bottom,
+        transform = transform,
+        canvasWidth = size.width,
+        canvasHeight = size.height
+    )
+    drawRect(
+        color = Color(0xFFFF8A65),
+        topLeft = topLeft,
+        size = Size(
+            width = bottomRight.x - topLeft.x,
+            height = bottomRight.y - topLeft.y
+        ),
+        style = Stroke(width = 3f)
+    )
+}
+
 private fun DrawScope.drawRoi(transform: FrameTransform) {
     val topLeft = sourceToPreviewOffset(
         sourceX = transform.cropLeft,
@@ -134,8 +163,8 @@ private fun PoseKeypoint.toPreviewOffset(
     canvasWidth: Float,
     canvasHeight: Float
 ): Offset {
-    val sourceWidth = transform.cropWidth + transform.cropLeft * 2f
-    val sourceHeight = transform.cropHeight + transform.cropTop * 2f
+    val sourceWidth = transform.sourceWidth.takeIf { it > 0f } ?: (transform.cropWidth + transform.cropLeft * 2f)
+    val sourceHeight = transform.sourceHeight.takeIf { it > 0f } ?: (transform.cropHeight + transform.cropTop * 2f)
     if (sourceWidth <= 0f || sourceHeight <= 0f) {
         return Offset.Zero
     }
@@ -152,8 +181,8 @@ private fun sourceToPreviewOffset(
     canvasWidth: Float,
     canvasHeight: Float
 ): Offset {
-    val sourceWidth = transform.cropWidth + transform.cropLeft * 2f
-    val sourceHeight = transform.cropHeight + transform.cropTop * 2f
+    val sourceWidth = transform.sourceWidth.takeIf { it > 0f } ?: (transform.cropWidth + transform.cropLeft * 2f)
+    val sourceHeight = transform.sourceHeight.takeIf { it > 0f } ?: (transform.cropHeight + transform.cropTop * 2f)
     if (sourceWidth <= 0f || sourceHeight <= 0f) {
         return Offset.Zero
     }

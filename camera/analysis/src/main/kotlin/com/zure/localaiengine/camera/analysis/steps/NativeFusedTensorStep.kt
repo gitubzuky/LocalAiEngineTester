@@ -39,7 +39,8 @@ class NativeFusedTensorStep(
             context.profile.inputWidth > 0 &&
             context.profile.inputHeight > 0 &&
             context.profile.resizePolicy is ResizePolicy.Bilinear &&
-            context.profile.cropPolicy !is CropPolicy.Letterbox
+            context.profile.cropPolicy !is CropPolicy.Letterbox &&
+            context.profile.cropPolicy !is CropPolicy.Roi
     }
 
     private fun processNative(buffer: MutableFrameBuffer, context: FrameProcessContext): Boolean {
@@ -106,6 +107,8 @@ class NativeFusedTensorStep(
             FrameTransform(
                 modelInputWidth = outputWidth,
                 modelInputHeight = outputHeight,
+                sourceWidth = if (frame.rotationDegrees % 180 == 0) frame.width.toFloat() else frame.height.toFloat(),
+                sourceHeight = if (frame.rotationDegrees % 180 == 0) frame.height.toFloat() else frame.width.toFloat(),
                 cropLeft = crop.left,
                 cropTop = crop.top,
                 cropWidth = crop.width,
@@ -133,6 +136,7 @@ class NativeFusedTensorStep(
             CropPolicy.None -> CropRect(0f, 0f, rotatedWidth.toFloat(), rotatedHeight.toFloat())
             is CropPolicy.CenterAspectFit -> centerAspectCrop(rotatedWidth, rotatedHeight, policy.width, policy.height)
             is CropPolicy.CenterCrop -> fixedCenterCrop(rotatedWidth, rotatedHeight, policy.width, policy.height)
+            is CropPolicy.Roi -> CropRect(policy.left, policy.top, policy.width, policy.height)
             is CropPolicy.Letterbox -> CropRect(0f, 0f, rotatedWidth.toFloat(), rotatedHeight.toFloat())
         }
     }

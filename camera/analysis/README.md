@@ -132,6 +132,18 @@ normalization: ZeroToOne
 
 这能匹配当前 `:engines:tflite` 只接受 `InferenceInput.Tensor` 的设计。正式接入前仍建议用 TFLite `Interpreter.getInputTensor(0)` 读取真实 shape/name/dataType，并将 `inputName` 传入 `RtmposeBody2dProfile.create(inputName)`。
 
+## RTMDet 人体检测前置
+
+姿态相机测试页使用 `RTMDet person detector -> RTMPose` 两阶段流程。RTMDet 检测模型通过 app 层 `LocalModelDiscovery` 统一发现，可放在：
+
+```text
+app/src/main/assets/models/tflite/rtmdet_*person*.tflite
+```
+
+也可以放在运行时外部 TFLite 模型目录。文件名需要同时包含 `rtmdet` 和 `person`，用于和普通 TFLite 模型区分。发现到多个候选时，assets 内置模型优先，外部目录作为兜底。
+
+检测阶段使用 `RtmDetPersonProfile` 生成 640x640 letterbox 输入，并将 letterbox 的 scale/pad 记录到 `FrameTransform`；RTMDet 输出的人体 bbox 会映射回相机帧坐标，再扩展为 RTMPose 需要的 192:256 ROI 重新预处理同一帧。
+
 ## Pipeline 与可扩展步骤
 
 每个预处理步骤实现：
@@ -250,5 +262,5 @@ NativeBackendUnavailable
 
 - 增加 direct `ByteBuffer` 复用池。
 - 增加 TFLite tensor inspector，根据模型真实 input tensor 自动生成 Profile。
-- 增加 ROI 输入，支持人体检测器输出 bbox 后再喂给 RTMPose。
+- 继续完善 ROI 输入，覆盖更多检测模型输出格式和 native fused ROI 路径。
 - 增加坐标后处理工具，将关键点从模型输入坐标映射回预览坐标。

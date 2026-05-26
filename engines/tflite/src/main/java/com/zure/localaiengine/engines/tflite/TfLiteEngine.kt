@@ -12,6 +12,8 @@ import com.zure.localaiengine.core.inference.InferenceTask
 import com.zure.localaiengine.core.model.ModelFormat
 import java.io.File
 import java.lang.reflect.Array as ReflectArray
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.system.measureTimeMillis
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
@@ -34,6 +36,7 @@ class TfLiteEngine(
 
         val options = Interpreter.Options().apply {
             config.options["numThreads"]?.toIntOrNull()?.let(::setNumThreads)
+            config.options["useXNNPACK"]?.toBooleanStrictOrNull()?.let(::setUseXNNPACK)
         }
 
         close()
@@ -96,6 +99,9 @@ class TfLiteEngine(
         val elapsedMillis = measureTimeMillis {
             activeInterpreter.runForMultipleInputsOutputs(inputs, outputs)
         }
+        outputs.values.forEach { data ->
+            if (data is ByteBuffer) data.rewind()
+        }
         if (shouldLog) {
             outputs.forEach { (index, data) ->
                 val tensor = activeInterpreter.getOutputTensor(index)
@@ -149,10 +155,15 @@ class TfLiteEngine(
 
     private fun createTensorBuffer(dataType: DataType, shape: IntArray): Any {
         val safeShape = shape.map { dimension -> dimension.coerceAtLeast(1) }.toIntArray()
+        if (dataType == DataType.INT8 || dataType == DataType.UINT8) {
+            val elementCount = safeShape.fold(1) { acc, dimension -> acc * dimension }
+            return ByteBuffer
+                .allocateDirect(elementCount)
+                .order(ByteOrder.nativeOrder())
+        }
         val componentType = when (dataType) {
             DataType.FLOAT32 -> Float::class.javaPrimitiveType
             DataType.INT32 -> Int::class.javaPrimitiveType
-            DataType.UINT8 -> Byte::class.javaPrimitiveType
             DataType.INT64 -> Long::class.javaPrimitiveType
             DataType.BOOL -> Boolean::class.javaPrimitiveType
             else -> error("Unsupported TensorFlow Lite output data type: $dataType")
@@ -196,12 +207,16 @@ class TfLiteEngine(
             is IntArray -> value.forEach { output.add(it.toFloat()) }
             is LongArray -> value.forEach { output.add(it.toFloat()) }
             is ByteArray -> value.forEach { output.add((it.toInt() and 0xFF).toFloat()) }
-            is java.nio.ByteBuffer -> {
+            is ByteBuffer -> {
                 val duplicate = value.duplicate().order(value.order())
                 duplicate.rewind()
                 if (duplicate.remaining() % Float.SIZE_BYTES == 0) {
                     repeat(duplicate.remaining() / Float.SIZE_BYTES) {
                         output.add(duplicate.float)
+                    }
+                } else {
+                    repeat(duplicate.remaining()) {
+                        output.add((duplicate.get().toInt() and 0xFF).toFloat())
                     }
                 }
             }
