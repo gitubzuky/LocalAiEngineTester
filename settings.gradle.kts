@@ -25,7 +25,11 @@ dependencyResolutionManagement {
 rootProject.name = "LocalAIEngineTester"
 include(":app")
 include(":core")
+include(":core:tts")
 include(":camera:analysis")
 include(":engines:tflite")
 include(":engines:onnxruntime")
 include(":engines:llama")
+include(":sherpa-onnx-tts")
+include(":sherpa-onnx-tts:sherpa-onnx-aar")
+include(":sherpa-onnx-tts:bundle-kokoro")

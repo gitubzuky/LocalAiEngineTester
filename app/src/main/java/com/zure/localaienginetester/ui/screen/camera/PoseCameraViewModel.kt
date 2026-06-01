@@ -297,10 +297,10 @@ class PoseCameraViewModel @Inject constructor(
         }
         val yolo = yoloCandidates.selectPreferred()
         val rtmDet = rtmDetCandidates.selectPreferred()
-        val selected = yolo?.let { DetectorModel(PersonDetectorType.Yolo, it) }
-            ?: rtmDet?.let { DetectorModel(PersonDetectorType.RtmDet, it) }
+        val selected = rtmDet?.let { DetectorModel(PersonDetectorType.RtmDet, it) }
+            ?: yolo?.let { DetectorModel(PersonDetectorType.Yolo, it) }
             ?: error(
-                "未找到 YOLO/RTMDet person detector TFLite 模型。请将模型放入 " +
+                "未找到 RTMDet/YOLO person detector TFLite 模型。请将模型放入 " +
                     "app/src/main/assets/models/tflite/，或外部目录 " +
                     "${discoveryResult.externalDirectoryPath ?: "models/tflite"}，并确保文件名包含 yolo+person 或 rtmdet+person。"
             )

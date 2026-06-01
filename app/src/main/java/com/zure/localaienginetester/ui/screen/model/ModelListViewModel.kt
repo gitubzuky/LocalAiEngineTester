@@ -51,6 +51,14 @@ class ModelListViewModel @Inject constructor(
                 require(model.format in currentData.engine.supportedFormats) {
                     "${currentData.engine.name} does not support ${model.format}."
                 }
+                if (model.isSherpaOnnxTtsModel()) {
+                    val bundleDir = withContext(Dispatchers.IO) {
+                        modelDiscovery.prepareModelBundle(model)
+                    }
+                    _uiState.value = UiState.Success(currentData.copy(loadingModelId = null))
+                    sendEvent(ModelListEvent.TtsReady(model.name, bundleDir.absolutePath))
+                    return@launch
+                }
                 val modelFile = withContext(Dispatchers.IO) {
                     modelDiscovery.prepareModelFile(model)
                 }
@@ -110,6 +118,10 @@ class ModelListViewModel @Inject constructor(
             name.contains("rtmpose", ignoreCase = true) &&
             name.contains("body2d", ignoreCase = true)
     }
+
+    private fun LocalModel.isSherpaOnnxTtsModel(): Boolean {
+        return engineId == "sherpa-onnx" && format == ModelFormat.ONNX
+    }
 }
 
 data class ModelListUiData(
@@ -124,4 +136,5 @@ sealed class ModelListEvent : UiEvent {
     data class Error(override val message: String) : ModelListEvent(), ErrorEvent
     data class ModelReady(val modelName: String) : ModelListEvent()
     data class CameraPoseReady(val modelName: String) : ModelListEvent()
+    data class TtsReady(val modelName: String, val modelPath: String) : ModelListEvent()
 }

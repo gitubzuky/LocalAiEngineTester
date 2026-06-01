@@ -9,6 +9,7 @@ import com.zure.localaienginetester.ui.screen.camera.PoseCameraScreen
 import com.zure.localaienginetester.ui.screen.home.HomeScreen
 import com.zure.localaienginetester.ui.screen.model.ModelListScreen
 import com.zure.localaienginetester.ui.screen.translation.TranslationScreen
+import com.zure.localaienginetester.ui.screen.tts.TtsTestScreen
 
 @Composable
 fun AppNavHost(
@@ -22,5 +23,6 @@ fun AppNavHost(
         composable<Route.ModelList> { ModelListScreen(navController = navController) }
         composable<Route.TranslationTest> { TranslationScreen(navController = navController) }
         composable<Route.CameraPoseTest> { PoseCameraScreen(navController = navController) }
+        composable<Route.TtsTest> { TtsTestScreen(navController = navController) }
     }
 }

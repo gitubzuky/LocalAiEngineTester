@@ -53,6 +53,9 @@ fun ModelListScreen(
                 is ModelListEvent.ModelReady -> {
                     navController.navigate(Route.TranslationTest(event.modelName))
                 }
+                is ModelListEvent.TtsReady -> {
+                    navController.navigate(Route.TtsTest(event.modelName, event.modelPath))
+                }
                 is ModelListEvent.Error -> Unit
             }
         }

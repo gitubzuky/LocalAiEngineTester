@@ -6,11 +6,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val supportedAIEngines = setOf("tflite", "llama", "onnxruntime")
+val supportedAIEngines = setOf("tflite", "llama", "onnxruntime", "sherpa-onnx")
 val packagedAIEngines = setOf(
     "tflite",
      "llama",
     "onnxruntime",
+    "sherpa-onnx",
 )
 
 val unknownAIEngines = packagedAIEngines - supportedAIEngines
@@ -70,10 +71,17 @@ android {
     lint {
         disable += "OldTargetApi"
     }
+
+    packaging {
+        jniLibs {
+            pickFirsts += "lib/**/libonnxruntime.so"
+        }
+    }
 }
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":core:tts"))
     implementation(project(":camera:analysis"))
     if ("tflite" in packagedAIEngines) {
         implementation(project(":engines:tflite"))
@@ -83,6 +91,10 @@ dependencies {
     }
     if ("onnxruntime" in packagedAIEngines) {
         implementation(project(":engines:onnxruntime"))
+    }
+    if ("sherpa-onnx" in packagedAIEngines) {
+        implementation(project(":sherpa-onnx-tts"))
+        implementation(project(":sherpa-onnx-tts:bundle-kokoro"))
     }
 
     implementation(platform(libs.androidx.compose.bom))

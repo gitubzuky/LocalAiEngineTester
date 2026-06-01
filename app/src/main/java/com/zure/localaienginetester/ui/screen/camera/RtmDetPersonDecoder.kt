@@ -11,9 +11,8 @@ import java.nio.ByteBuffer
 class RtmDetPersonDecoder(
     private val scoreThreshold: Float = 0.08f,
     private val topKScoreThreshold: Float = 0.03f,
-    private val topKMinAreaRatio: Float = 0.08f,
+    private val topKMinAreaRatio: Float = 0.003f,
     private val topKMaxAreaRatio: Float = 0.8f,
-    private val topKPreferredAreaRatio: Float = 0.28f,
     private val nmsThreshold: Float = 0.45f,
     private val personClassIndex: Int = 0
 ) {
@@ -31,7 +30,7 @@ class RtmDetPersonDecoder(
                 "rtmdet-decode[$decodeCount] outputs=${tensors.tensorSummary()} " +
                     "transform=$transform scoreThreshold=$scoreThreshold " +
                     "topKScoreThreshold=$topKScoreThreshold topKMinAreaRatio=$topKMinAreaRatio " +
-                    "topKMaxAreaRatio=$topKMaxAreaRatio topKPreferredAreaRatio=$topKPreferredAreaRatio " +
+                    "topKMaxAreaRatio=$topKMaxAreaRatio " +
                     "nmsThreshold=$nmsThreshold"
             )
         }
@@ -112,20 +111,13 @@ class RtmDetPersonDecoder(
                 boundingBox = box
             )
         }
-        val selected = decoded.maxWithOrNull(
-            compareBy<Detection> { detection ->
-                detection.boundingBox.areaRatio(transform).topKAreaFit()
-            }.thenBy { detection ->
-                detection.score
-            }
-        )?.let(::listOf).orEmpty()
         if (shouldLog(decodeCount)) {
             AppLog.i(
                 TAG,
                 "rtmdet-decode[$decodeCount] topK rows=${rows.size} labels=${labels.size} " +
                     "personRows=$personRows skippedSmall=$skippedSmallRows skippedLarge=$skippedLargeRows " +
-                    "passed=$passedRows decoded=${decoded.size} selected=${selected.size} " +
-                    "best=${selected.firstOrNull()?.summary() ?: "none"}"
+                    "passed=$passedRows decoded=${decoded.size} " +
+                    "best=${decoded.maxByOrNull { it.score }?.summary() ?: "none"}"
             )
             AppLog.i(
                 TAG,
@@ -136,7 +128,7 @@ class RtmDetPersonDecoder(
                 }.joinToString()}"
             )
         }
-        return DecodeAttempt(supported = true, detections = selected)
+        return DecodeAttempt(supported = true, detections = decoded)
     }
 
     private fun decodeAiHubBoxesScoresClassIdx(
@@ -301,10 +293,6 @@ class RtmDetPersonDecoder(
         val sourceHeight = transform.sourceHeight.takeIf { it > 0f } ?: transform.cropHeight
         val sourceArea = sourceWidth * sourceHeight
         return if (sourceArea <= 0f) 0f else area() / sourceArea
-    }
-
-    private fun Float.topKAreaFit(): Float {
-        return 1f - kotlin.math.abs(this - topKPreferredAreaRatio)
     }
 
     private fun Any.flattenFloats(): FloatArray {

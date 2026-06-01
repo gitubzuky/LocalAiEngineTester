@@ -7,4 +7,5 @@ sealed class Route {
     @Serializable data class ModelList(val engineId: String) : Route()
     @Serializable data class TranslationTest(val modelName: String) : Route()
     @Serializable data class CameraPoseTest(val modelName: String) : Route()
+    @Serializable data class TtsTest(val modelName: String, val modelPath: String) : Route()
 }
